@@ -1,0 +1,33 @@
+; PMMA粗粒度模型能量最小化（Martini 3.x）
+
+integrator               = steep     ; 最陡下降法快速收敛
+emtol                    = 100.0     ; 收敛阈值（力<100 kJ/mol/nm）
+emstep                   = 0.02      ; 初始步长（保守值）
+nsteps                   = 1000      ; 总步数（20 ps）
+
+; 输出与邻区列表
+nstxout                  = 0
+nstlog                   = 100
+nstenergy                = 100
+cutoff-scheme            = Verlet
+nstlist                  = 20
+pbc                      = xyz
+
+; 静电与范德华
+coulombtype              = reaction-field
+coulomb-modifier         = Potential-shift-Verlet
+rcoulomb-switch          = 0
+rcoulomb                 = 1.1
+epsilon_r                = 15
+epsilon_rf               = 0
+
+vdw_type                 = cutoff
+rvdw                     = 1.1
+vdw-modifier             = Potential-shift-verlet
+
+; 熔融态需禁用温压耦合（能量最小化无需控温）
+; 移除所有tcoupl和Pcoupl相关参数！
+
+; 约束与初始化
+constraints              = none      ; 允许链段自由移动
+gen_vel                  = no        ; 不生成初始速度

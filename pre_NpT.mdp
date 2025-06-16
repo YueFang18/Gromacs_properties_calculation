@@ -1,0 +1,72 @@
+; PMMA熔融态NPT平衡（Martini 3.x）
+; 目标：高温下达到稳定密度和均质熔体
+;------------------------------------------------------------
+;  1. 运行控制 (RUN CONTROL PARAMETERS)
+;------------------------------------------------------------
+integrator               = md
+dt                       = 0.02      ; 20 fs，粗粒度合理步长
+nsteps                   = 500000    ; 10 ns（熔融态需更长时间平衡）
+nstcomm                  = 100
+
+;------------------------------------------------------------
+; 2. 输出设置 (OUTPUT CONTROL)
+;------------------------------------------------------------
+nstlog                   = 1000
+nstenergy                = 1000
+nstxout-compressed       = 5000      ; 适当减少输出频率
+
+;------------------------------------------------------------
+; 3. 邻域列表 (NEIGHBOURSEARCH)
+;------------------------------------------------------------
+ cutoff-scheme           = Verlet
+ nstlist                 = 20                ;# 400 fs 刷新 NL
+ pbc                     = xyz
+ periodic-molecules      = yes                ;# 聚合物可设 yes 保证整分子
+ verlet-buffer-tolerance = 0.005             ;# 能量漂移容忍
+ rlist                   = 1.0               ;# 与 Verlet 皮肤估算结合使用
+ 
+ 
+;------------------------------------------------------------
+; 4. 静电 & VdW (ELECTROSTATICS / VDW)
+;------------------------------------------------------------
+coulombtype              = reaction-field
+coulomb-modifier         = Potential-shift-Verlet
+rcoulomb-switch          = 0
+rcoulomb                 = 1.1
+epsilon_r                = 15
+epsilon_rf               = 0
+
+vdw_type                 = cutoff
+rvdw                     = 1.1
+vdw-modifier             = Potential-shift-verlet
+
+;------------------------------------------------------------
+; 5. 弱耦合 (TEMPERATURE / PRESSURE)
+;------------------------------------------------------------
+; 温度控制（熔融态需高于Tg）
+tcoupl                   = v-rescale
+tc-grps                  = System
+tau_t                    = 1.0       ; 松耦合时间常数
+ref_t                    = 400       ; 设置温度（高于PMMA Tg≈105°C）
+
+; 压力控制（分阶段优化）
+; 初始阶段快速调整密度
+Pcoupl                   = Berendsen
+Pcoupltype               = isotropic
+tau_p                    = 1.0
+compressibility          = 4.5e-6      ; 近似polymer压缩率
+ref_p                    = 1.0       ; 1 bar
+
+
+;------------------------------------------------------------
+; 6. 初始速度 (GENERATE VELOCITIES)
+;------------------------------------------------------------
+gen_vel                  = yes       ; 从能量最小化结构生成速度
+gen_temp                 = 400       ; 初始温度与ref_t一致
+gen_seed                 = 473529
+
+;------------------------------------------------------------
+; 7. 约束 (BONDS / CONSTRAINTS)
+;------------------------------------------------------------
+constraints              = none
+continuation             = no        ; 首次平衡

@@ -1,0 +1,64 @@
+; =========================================================================
+; == GROMACS .mdp file for Uniaxial Tensile Deformation                ==
+; == (Martini CGMD, CORRECTED SCRIPT)                                  ==
+; =========================================================================
+
+; --- 运行控制 ---
+integrator               = md
+dt                       = 0.02      ; Martini标准时间步长 (20 fs)
+nsteps                   = 50000  ; 总步数，需要根据目标应变和应变率计算
+
+; **核心计算**:
+; 目标: 达到 200% 的应变 (即 strain = 2.0)
+; 速率: 采用一个更物理的应变率，例如 1e-5 ps⁻¹ (相当于 10⁷ s⁻¹)
+; 总时间 (ps) = 总应变 / 应变率 = 2.0 / 1e-5 = 200,000 ps = 200 ns
+; 总步数 nsteps = 总时间 / dt = 200000 / 0.02 = 10,000,000
+
+; --- 输出控制 ---
+nstlog                   = 1000      ; 每 100 ps 在日志文件中记录一次信息
+nstenergy                = 10       ; 每 10 ps 保存一次能量/压力项 (用于绘制应力-应变曲线)
+nstxout-compressed       = 1000      ; 每 100 ps 保存一次坐标到 .xtc 轨迹文件
+
+; --- 邻区搜索 ---
+cutoff-scheme            = Verlet
+nstlist                  = 20
+pbc                      = xyz
+periodic-molecules       = yes       ; **关键**: 防止聚合物链在周期性盒子边界处断裂
+
+; --- 非键相互作用 (必须与平衡阶段保持一致) ---
+coulombtype              = reaction-field
+coulomb-modifier         = Potential-shift-Verlet
+rcoulomb-switch          = 0
+rcoulomb                 = 1.1
+epsilon_r                = 15
+epsilon_rf               = 0
+
+vdw-type                 = Cut-off
+vdw-modifier             = Potential-shift-verlet
+rvdw                     = 1.1
+
+; --- 温度耦合 ---
+tcoupl                   = v-rescale ; 优秀的控温器
+tc-grps                  = System
+tau_t                    = 1.0       ; 温度耦合时间常数 (ps)
+ref_t                    = 400       ; 必须与平衡阶段的温度一致
+
+; --- 压力耦合与形变 ---
+Pcoupl                   = Berendsen ; 对于非平衡过程（如拉伸）比P-R更稳定
+pcoupltype               = anisotropic ; 允许盒子各向异性地改变
+tau_p                    = 1.0       ; 稍大的弛豫时间可以增加稳定性，尤其在高速形变下
+; 在Y/Z方向控制压力，让X方向自由形变
+ref_p                    = 0 1.0 1.0 0 0 0
+compressibility          = 0 4.5e-6 4.5e-6 0 0 0 ; 聚合物的压缩率(单位: bar⁻¹)
+; **关键修正**: 使用一个物理上合理的、慢得多的形变速率
+; 假设盒子X方向初始长度 L_x ≈ 10 nm
+; 期望应变率 (strain rate) = 1e-5 ps⁻¹
+; deform_x = strain_rate * L_x = 1e-5 ps⁻¹ * 10 nm = 1e-4 nm/ps
+deform                   = 0.05 0 0 0 0 0
+
+; --- 初始状态 ---
+gen_vel                  = no        ; 正确: 从平衡好的状态继续，不重新生成速度
+continuation             = yes       ; 推荐: 确保从上一步平滑地延续状态
+
+; --- 约束 ---
+constraints              = none      ; 允许聚合物链完全柔性
